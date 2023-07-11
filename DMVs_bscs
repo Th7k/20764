@@ -1,0 +1,65 @@
+
+/*Identify & Create Missing Indexes */
+
+use AdventureWorks2016;
+go
+
+--DMVs
+select * from sys.dm_db_missing_index_details;
+
+select * from sys.dm_db_missing_index_groups;
+select * from sys.dm_db_missing_index_group_stats;
+go
+
+--the queries
+select Name, ModifiedDate from sales.Store where Name='Twin Cycles'
+
+
+select Name, ModifiedDate from sales.Store 
+where Name='Twin Cycles' and ModifiedDate > '01/01/2010'
+
+go
+
+--DMVs
+select * from sys.dm_db_missing_index_details
+
+	/*results
+	index_handle	database_id	object_id	equality_columns	inequality_columns	included_columns	statement
+	1	9	846626059	[Name]	NULL	NULL	[AdventureWorks2016].[Sales].[Store]
+	3	9	846626059	[Name]	[ModifiedDate]	NULL	[AdventureWorks2016].[Sales].[Store]
+	*/
+
+	--note
+	--DBCC SQLPERF("sys.dm_exec_trigger_stats",CLEAR)--u can only reset 2 DMVs with dbcc  
+	-- (sys.dm_os_latch_stats, sys.dm_os_wait_stats)
+
+--for more info use
+select * from sys.dm_db_missing_index_groups;
+select * from sys.dm_db_missing_index_group_stats;
+
+
+--a full query to identify missing indexes 
+SELECT DISTINCT 
+OBJECT_NAME (mid.object_id) AS TableName, 
+mid.equality_columns , 
+mid.inequality_columns,
+mid.included_columns, 
+migs.unique_compiles,
+migs.last_user_seek,
+migs.avg_total_user_cost,
+migs.avg_user_impact
+FROM sys.dm_db_missing_index_group_stats as migs
+JOIN sys.dm_db_missing_index_groups as mig on migs.group_handle=mig.index_group_handle
+JOIN sys.dm_db_missing_index_details as mid on mig.index_handle=mid.index_handle
+WHERE mid.database_id=db_id()
+
+/*results
+TableName	equality_columns	inequality_columns	included_columns	unique_compiles	last_user_seek	avg_total_user_cost	avg_user_impact
+Store	[Name]	NULL	NULL	2	2023-07-11 15:40:30.940	0,0784636540740741	95,07
+Store	[Name]	[ModifiedDate]	NULL	2	2023-07-11 15:40:37.140	0,0787440540740741	95,09
+*/
+go
+
+--Create indexes -- click to display the Execution PLAN
+select Name, ModifiedDate from sales.Store 
+where Name='Twin Cycles' and ModifiedDate > '01/01/2010'
