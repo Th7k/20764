@@ -1,0 +1,14 @@
+--create a SP, get total sales by product
+	CREate procedure GetSalesTotalsByProduct ( @prodid int )
+	as
+
+	select od.ProductID,sum(od.Quantity) as totalQuantity
+	,sum(od.SubTotal) as subTotal
+	from sales.orderdetails od
+	where ProductID=@prodid
+	group by od.ProductID;
+	go
+
+--execute it 10 times
+exec GetSalesTotalsByProduct 215;
+go 10
