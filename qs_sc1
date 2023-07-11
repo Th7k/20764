@@ -1,0 +1,80 @@
+use AdventureWorks2016;
+go
+
+select *
+from Production.Product p join Production.ProductInventory pi on pi.ProductID=p.ProductID
+join Production.Location l on l.LocationID=pi.LocationID
+where ltrim(l.Name)='Final Assembly '
+
+
+
+/*2*/ --the same query without the ltrim function - the data quality must be a "back stage" task 
+select *
+from Production.Product p join Production.ProductInventory pi on pi.ProductID=p.ProductID
+join Production.Location l on l.LocationID=pi.LocationID
+where /*ltrim(l.Name)*/l.Name='Final Assembly '
+
+
+
+--Improve with Indexes
+--the query
+	select p.Name prodName, p.StandardCost , l.Name [locationName],pi.Shelf
+	from Production.Product p join Production.ProductInventory pi on pi.ProductID=p.ProductID
+	join Production.Location l on l.LocationID=pi.LocationID
+	where l.Name='Final Assembly '
+
+
+/*
+In order to cancel the Key_Lookup operation we need to add the shelf into the previous index 
+
+SO DELETE and recreate it
+
+*/
+
+
+DROP INDEX if exists ncix_productLocationShelf ON Production.ProductInventory
+
+
+create index ncix_productLocationShelf
+	on Production.ProductInventory(LocationID)
+	include (shelf);
+
+--rerun
+--the query
+	select p.Name prodName, p.StandardCost , l.Name [locationName],pi.Shelf
+	from Production.Product p join Production.ProductInventory pi on pi.ProductID=p.ProductID
+	join Production.Location l on l.LocationID=pi.LocationID
+	where l.Name='Final Assembly'
+
+/*
+Add a new index on Production.Product 
+in order to change the Clustered Index Seek (Clustered ) to Clustered Index Seek (NonClustered )
+
+*/
+
+--Improve with Indexes
+--the query
+	select p.Name prodName, p.StandardCost , l.Name [locationName],pi.Shelf
+	from Production.Product p join Production.ProductInventory pi on pi.ProductID=p.ProductID
+	join Production.Location l on l.LocationID=pi.LocationID
+	where l.Name='Final Assembly '
+	
+	
+create index ncix_productNameCost
+	on Production.Product(ProductID)
+	INCLUDE (Name,StandardCost);
+
+--VIEW THE PLAN CACHE
+select ep.* ,es.text
+from sys.dm_exec_cached_plans ep
+cross apply sys.dm_exec_sql_text(plan_handle) es;
+
+--refCounts --> the number of times tha plan is used
+--objType --> adhoc means query manually run from a session
+
+--clear the plan cache (instance)
+	dbcc freeprocCache;
+
+--clear the plan cache (database)
+dbcc FLUSHPROCINDB(7); --6 is the database id
+
