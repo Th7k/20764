@@ -1,0 +1,7 @@
+use PeraCoDB;
+go
+
+Select c.CustomerID, c.FirstName,c.LastName,c.CreditLimit
+from sales.Customers c
+where c.AccountDate>='01/01/2015' and c.AccountDate <='12/31/2015' and c.CreditLimit is not null
+order by c.CreditLimit DESC;
